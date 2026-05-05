@@ -38,10 +38,6 @@ const TIMEFRAMES: Timeframe[] = ["1m", "5m", "15m", "1H", "1D", "1W"];
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL || "https://alpaca-backend-kxfg.onrender.com";
 
-function sanitizeSymbol(value: string) {
-  return value.trim().toUpperCase().replace(/[^A-Z]/g, "");
-}
-
 const keyLevels = {
   breakout: 288.62,
   priorHigh: 287.22,
@@ -138,11 +134,6 @@ function useLiveFeed(symbol: string, manualPrice: number, liveMode: boolean) {
     createLiveUpdate(symbol, manualPrice, 750000, 0)
   );
   const sequenceRef = useRef(0);
-  const symbolRef = useRef(sanitizeSymbol(symbol));
-
-  useEffect(() => {
-    symbolRef.current = sanitizeSymbol(symbol);
-  }, [symbol]);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,12 +142,8 @@ function useLiveFeed(symbol: string, manualPrice: number, liveMode: boolean) {
       if (!liveMode) return;
 
       try {
-        const cleanSymbol = sanitizeSymbol(currentSymbol);
-        if (!cleanSymbol) return;
-
-        console.log("FETCHING LIVE SYMBOL:", cleanSymbol);
-
-        const response = await fetch(`${BACKEND_URL}/api/stock/${encodeURIComponent(cleanSymbol)}?t=${Date.now()}`);
+        const cleanSymbol = currentSymbol.trim().toUpperCase();
+        const response = await fetch(`${BACKEND_URL}/api/stock/${cleanSymbol}?t=${Date.now()}`);
 
         if (!response.ok) {
           throw new Error(`Backend returned ${response.status}`);
@@ -179,10 +166,8 @@ function useLiveFeed(symbol: string, manualPrice: number, liveMode: boolean) {
     }
 
     if (liveMode) {
-      fetchLive(symbolRef.current);
-      const interval = window.setInterval(() => {
-        fetchLive(symbolRef.current);
-      }, 5000);
+      fetchLive(symbol);
+      const interval = window.setInterval(() => fetchLive(symbol), 5000);
       return () => {
         cancelled = true;
         window.clearInterval(interval);
@@ -229,20 +214,19 @@ export default function App() {
   const decision = live.decision;
   const nodes = live.confluence;
 
-    function loadSymbol() {
-    const clean = sanitizeSymbol(tickerInput);
+  function loadSymbol() {
+  const clean = tickerInput
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, ""); // 🔥 critical fix
 
-    console.log("SETTING TICKER:", clean);
+  console.log("SETTING TICKER:", clean);
 
-    if (!clean) {
-      alert("Invalid symbol");
-      return;
-    }
+  if (!clean) return;
 
-    setTickerInput(clean);
-    setActiveTicker(clean);
-    setCandles(baseCandles);
-  }
+  setActiveTicker(clean);
+  setCandles(baseCandles);
+}
 
   useEffect(() => {
     setCandles((prev) => {
