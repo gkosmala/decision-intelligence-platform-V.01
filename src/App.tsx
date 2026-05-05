@@ -302,10 +302,18 @@ export default function App() {
             <div className="controls">
               <input value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} />
               <button className="btn green" onClick={loadSymbol}>Load Symbol</button>
-              <input value={liveMode ? price.toFixed(2) : priceText} onChange={(e) => setPriceText(e.target.value)}
-  		disabled={liveMode}
-		title={liveMode ? "Live Alpaca price" : "Manual synthetic price"}
-	      />
+              {liveMode ? (
+  		<div className="live-price-box">
+   		 <span>Live Price</span>
+   		 <strong>${price.toFixed(2)}</strong>
+ 		 </div>
+		) : (
+  	<input
+    value={priceText}
+    onChange={(e) => setPriceText(e.target.value)}
+    title="Manual synthetic price"
+  />
+)}
               <div className="timeframes">
                 {TIMEFRAMES.map((tf) => (
                   <button key={tf} onClick={() => setTimeframe(tf)} className={timeframe === tf ? "active" : ""}>
@@ -776,6 +784,33 @@ input { background: #0f172a; color: white; border: 1px solid rgba(255,255,255,.1
 .alert.go { border: 1px solid rgba(52,211,153,.40); background: rgba(16,185,129,.10); color: #d1fae5; }
 .zone-level { font-size: 28px; font-weight: 950; margin: 6px 0; }
 pre, .code { margin: 0; max-height: 430px; overflow: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.40); padding: 16px; color: #a7f3d0; font-size: 12px; }
+.live-price-box {
+  background: #0f172a;
+  color: white;
+  border: 1px solid rgba(52,211,153,.40);
+  border-radius: 12px;
+  padding: 8px 14px;
+  width: 130px;
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+}
+
+.live-price-box span {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+
+.live-price-box strong {
+  font-size: 18px;
+  color: #6ee7b7;
+  font-weight: 950;
+}
 @media (max-width: 1100px) {
   .grid-4 { grid-template-columns: 1fr; }
   .decision-wide .decision-hero { grid-template-columns: 1fr; }
