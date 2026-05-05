@@ -42,45 +42,15 @@ function sanitizeSymbol(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z]/g, "");
 }
 
-type KeyLevels = {
-  breakout: number;
-  priorHigh: number;
-  expansion: number;
-  confirm: number;
-  trigger: number;
-  trap: number;
-  fail: number;
+const keyLevels = {
+  breakout: 288.62,
+  priorHigh: 287.22,
+  expansion: 285.45,
+  confirm: 280.7,
+  trigger: 278.86,
+  trap: 278.37,
+  fail: 275,
 };
-
-function getKeyLevels(price: number): KeyLevels {
-  const safe = Number.isFinite(price) && price > 0 ? price : 1;
-  return {
-    breakout: safe * 1.03,
-    priorHigh: safe * 1.022,
-    expansion: safe * 1.015,
-    confirm: safe,
-    trigger: safe * 0.992,
-    trap: safe * 0.985,
-    fail: safe * 0.97,
-  };
-}
-
-function generateInitialCandles(anchorPrice: number) {
-  const safe = Number.isFinite(anchorPrice) && anchorPrice > 0 ? anchorPrice : 100;
-  const pattern = [-0.018, -0.014, -0.009, -0.004, 0.002, 0.006, 0.01, 0.007, 0.004, -0.002, -0.006, -0.009, -0.012, -0.007, -0.003, 0.001, 0.004, 0.007, 0.005, 0.002, -0.001, 0];
-  return pattern.map((pct, i) => {
-    const prevPct = i === 0 ? pct - 0.002 : pattern[i - 1];
-    const o = safe * (1 + prevPct);
-    const c = safe * (1 + pct);
-    const range = safe * (0.0025 + (i % 5) * 0.0004);
-    return {
-      o: Number(o.toFixed(2)),
-      h: Number((Math.max(o, c) + range).toFixed(2)),
-      l: Number((Math.min(o, c) - range).toFixed(2)),
-      c: Number(c.toFixed(2)),
-    };
-  });
-}
 
 const baseCandles = [
   { o: 278.86, h: 283.75, l: 278.37, c: 280.67 },
@@ -108,7 +78,6 @@ const baseCandles = [
 ];
 
 function runDecision(price: number, volumeConfirm: boolean): Decision {
-  const keyLevels = getKeyLevels(price);
   const score =
     price >= keyLevels.confirm && volumeConfirm
       ? 82
@@ -132,12 +101,11 @@ function runDecision(price: number, volumeConfirm: boolean): Decision {
 }
 
 function buildConfluenceNodes(price: number): ConfluenceNode[] {
-  const keyLevels = getKeyLevels(price);
   return [
-    { label: "Expansion Node 1", publicLabel: "Expansion Node", level: keyLevels.breakout, score: 63, tone: "up" as Tone },
-    { label: "Liquidity Retest", publicLabel: "Liquidity Retest", level: keyLevels.priorHigh, score: 60, tone: "up" as Tone },
-    { label: "Expansion Node 2", publicLabel: "Expansion Node", level: keyLevels.expansion, score: 57, tone: "up" as Tone },
-    { label: "Failure Node", publicLabel: "Failure Node", level: keyLevels.fail, score: 53, tone: "down" as Tone },
+    { label: "Expansion Node 1", publicLabel: "Expansion Node", level: 288.62, score: 63, tone: "up" as Tone },
+    { label: "Liquidity Retest", publicLabel: "Liquidity Retest", level: 287.22, score: 60, tone: "up" as Tone },
+    { label: "Expansion Node 2", publicLabel: "Expansion Node", level: 285.45, score: 57, tone: "up" as Tone },
+    { label: "Failure Node", publicLabel: "Failure Node", level: 275, score: 53, tone: "down" as Tone },
   ].map((node) => ({
     ...node,
     score: Math.max(
@@ -252,11 +220,17 @@ export default function App() {
   const [timeframe, setTimeframe] = useState<Timeframe>("5m");
   const [liveMode, setLiveMode] = useState(false);
   const [activeTab, setActiveTab] = useState("command");
-  const [candles, setCandles] = useState(() => generateInitialCandles(280.15));
+  const [candles, setCandles] = useState(baseCandles);
 
   const manualPrice = Number(priceText) || 0;
   const { connected, live } = useLiveFeed(activeTicker, manualPrice, liveMode);
-const price = live.price;
+  useEffect(() => {
+  if (liveMode && live?.price) {
+    setPriceText(live.price.toFixed(2));
+  }
+}, [live.price, liveMode]);
+
+  const price = live.price;
   const decision = live.decision;
   const nodes = live.confluence;
 
@@ -272,14 +246,8 @@ const price = live.price;
 
     setTickerInput(clean);
     setActiveTicker(clean);
-    setCandles(generateInitialCandles(price));
+    setCandles(baseCandles);
   }
-
-  useEffect(() => {
-    if (live.symbol === activeTicker) {
-      setCandles(generateInitialCandles(live.price));
-    }
-  }, [live.symbol]);
 
   useEffect(() => {
     setCandles((prev) => {
@@ -418,16 +386,15 @@ const price = live.price;
   );
 }
 
-function SmartChart({ candles, price, nodes }: { candles: ReturnType<typeof generateInitialCandles>; price: number; nodes: ConfluenceNode[] }) {
-  const keyLevels = getKeyLevels(price);
+function SmartChart({ candles, price, nodes }: { candles: typeof baseCandles; price: number; nodes: ConfluenceNode[] }) {
   const chartLevels = [
-    { level: keyLevels.breakout, label: `${keyLevels.breakout.toFixed(2)} Breakout`, tone: "up" as Tone },
-    { level: keyLevels.priorHigh, label: `${keyLevels.priorHigh.toFixed(2)} Liquidity`, tone: "up" as Tone },
-    { level: keyLevels.expansion, label: `${keyLevels.expansion.toFixed(2)} Expansion`, tone: "up" as Tone },
-    { level: keyLevels.confirm, label: `${keyLevels.confirm.toFixed(2)} Live Anchor`, tone: "neutral" as Tone },
-    { level: keyLevels.trigger, label: `${keyLevels.trigger.toFixed(2)} Trigger`, tone: "neutral" as Tone },
-    { level: keyLevels.trap, label: `${keyLevels.trap.toFixed(2)} Trap Door`, tone: "down" as Tone },
-    { level: keyLevels.fail, label: `${keyLevels.fail.toFixed(2)} Fail Gate`, tone: "down" as Tone },
+    { level: keyLevels.breakout, label: "288.62 Breakout", tone: "up" as Tone },
+    { level: keyLevels.priorHigh, label: "287.22 Liquidity", tone: "up" as Tone },
+    { level: keyLevels.expansion, label: "285.45 Expansion", tone: "up" as Tone },
+    { level: keyLevels.confirm, label: "280.70 Hold Gate", tone: "neutral" as Tone },
+    { level: keyLevels.trigger, label: "278.86 Trigger", tone: "neutral" as Tone },
+    { level: keyLevels.trap, label: "278.37 Trap Door", tone: "down" as Tone },
+    { level: keyLevels.fail, label: "275.00 Fail Gate", tone: "down" as Tone },
   ];
 
   const all = candles.flatMap((c) => [c.h, c.l]).concat(chartLevels.map((l) => l.level), nodes.map((n) => n.level), price);
@@ -541,7 +508,6 @@ function TradeCard({ price, decision }: { price: number; decision: Decision }) {
 }
 
 function ProbabilityLadder({ price, nodes, decision }: { price: number; nodes: ConfluenceNode[]; decision: Decision }) {
-  const keyLevels = getKeyLevels(price);
   const rows = [
     { label: "Upside Expansion", level: nodes[0]?.level ?? 288.62, probability: nodes[0]?.score ?? 63, tone: "up" as Tone },
     { label: "Liquidity Retest", level: nodes[1]?.level ?? 287.22, probability: nodes[1]?.score ?? 60, tone: "up" as Tone },
@@ -585,7 +551,6 @@ function TimeEngine() {
 }
 
 function AlertsPanel({ decision, price }: { decision: Decision; price: number }) {
-  const keyLevels = getKeyLevels(price);
   const alertState = decision.score >= 80 ? "Expansion Alert" : price < keyLevels.trap ? "Trap-Door Alert" : "Monitoring";
   return (
     <Card>
@@ -597,7 +562,6 @@ function AlertsPanel({ decision, price }: { decision: Decision; price: number })
 }
 
 function OptionsMatrix({ price, decision, tick }: { price: number; decision: Decision; tick: number }) {
-  const keyLevels = getKeyLevels(price);
   const volatilityScore = Math.max(18, Math.min(96, Math.round(Math.abs(price - keyLevels.trigger) * 18 + (tick % 9) * 4)));
   const callPressure = Math.max(12, Math.min(94, Math.round(decision.score + (price > keyLevels.confirm ? 8 : -10) + (tick % 5))));
   const putPressure = Math.max(8, Math.min(92, 100 - callPressure));
