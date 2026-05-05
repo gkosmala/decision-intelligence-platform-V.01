@@ -224,6 +224,11 @@ export default function App() {
 
   const manualPrice = Number(priceText) || 0;
   const { connected, live } = useLiveFeed(activeTicker, manualPrice, liveMode);
+  useEffect(() => {
+  if (liveMode && live?.price) {
+    setPriceText(live.price.toFixed(2));
+  }
+}, [live.price, liveMode]);
 
   const price = live.price;
   const decision = live.decision;
@@ -526,11 +531,7 @@ function TimeEngine() {
   const minutes = now.getHours() * 60 + now.getMinutes();
   const inSession = minutes >= 570 && minutes <= 960;
   const phase = !inSession ? "Outside RTH" : minutes < 630 ? "Opening Drive" : minutes < 840 ? "Midday Auction" : "Closing Auction";
-  useEffect(() => {
-  if (liveMode && live?.price) {
-    setPriceText(live.price.toFixed(2));
-  }
-}, [live.price, liveMode]);
+  
   return (
     <Card>
       <h2>⏱️ Time Engine</h2>
