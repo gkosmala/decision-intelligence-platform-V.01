@@ -297,7 +297,10 @@ export default function App() {
             <div className="controls">
               <input value={tickerInput} onChange={(e) => setTickerInput(e.target.value.toUpperCase())} />
               <button className="btn green" onClick={loadSymbol}>Load Symbol</button>
-              <input value={priceText} onChange={(e) => setPriceText(e.target.value)} />
+              <input value={liveMode ? price.toFixed(2) : priceText onChange={(e) => setPriceText(e.target.value)}
+  		disabled={liveMode}
+  		title={liveMode ? "Live Alpaca price" : "Manual synthetic price"}
+	      />
               <div className="timeframes">
                 {TIMEFRAMES.map((tf) => (
                   <button key={tf} onClick={() => setTimeframe(tf)} className={timeframe === tf ? "active" : ""}>
